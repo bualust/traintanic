@@ -3,12 +3,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
+import sklearn.metrics as sklm
+from sklearn.metrics import auc
+from sklearn.metrics import roc_curve
+from sklearn.metrics import accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 import category_encoders as ce
 
 #training data
@@ -85,5 +88,25 @@ plt.ylabel('AUC')
 plt.xlabel("Iteration")
 plt.title('XGBoost Training Performance')
 plt.show()
+
+# plot ROC curve
+y_pred_proba_train = bst.predict_proba(X)
+y_pred_proba_test  = bst.predict_proba(X_test)
+
+
+fpr_train, tpr_train, _ = sklm.roc_curve(Y, y_pred_proba_train[:,1])
+fpr_test, tpr_test, _   = sklm.roc_curve(Y_test, y_pred_proba_test[:,1])
+
+auc_train = sklm.auc(fpr_train, tpr_train)
+auc_test  = sklm.auc(fpr_test, tpr_test)
+
+fig, ax = plt.subplots()
+plt.title(f"ROC curve, AUC=(test: {auc_test:.4f}, train: {auc_train:.4f})")
+plt.plot(fpr_test, tpr_test, label="test data")
+plt.plot(fpr_train, tpr_train, label="train data")
+ax.legend()
+plt.ylabel('ROC Curve')
+plt.show()
+
 ##test data
 #testDF   = pd.read_csv('test.csv', header=0, index_col=None)
