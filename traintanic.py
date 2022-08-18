@@ -2,6 +2,11 @@ from xgboost import XGBClassifier
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn import preprocessing
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import category_encoders as ce
@@ -11,28 +16,74 @@ trainDF  = pd.read_csv('train.csv', header=0, index_col=None)
 num_feat = trainDF.select_dtypes([np.number]).columns
 num_feat = num_feat.drop('Survived')
 cat_feat = trainDF.select_dtypes(exclude=[np.number]).columns
+cat_feat = cat_feat.drop('Name')
+cat_feat = cat_feat.drop('Ticket')
+cat_feat = cat_feat.drop('Cabin')
+cat_feat = cat_feat.drop('Embarked')
+inp_feat = num_feat.append(cat_feat)
 
 # fit model
-bst = XGBClassifier(n_estimators=2, max_depth=2,#early_stopping_rounds=5,
-                    learning_rate=1, objective='binary:logistic')
+bst = XGBClassifier()
+bst.set_params(eval_metric=['error', 'logloss','auc'],
+               max_depth=2, early_stopping_rounds=10,
+               )
 
 X, X_test, Y, Y_test = train_test_split(
                                 trainDF[num_feat],
                                 trainDF['Survived'],
-                                test_size=0.33, random_state=7)
+                                test_size=0.33, random_state=5)
 
-#ce_bin = ce.BinaryEncoder(cols=trainDF['Sex'])
+#print(X,Y,X_test,Y_test)
+#Y = preprocessing.LabelEncoder().fit_transform(Y)
+#Y_test = preprocessing.LabelEncoder().fit_transform(Y_test)
+#ce_bin = ce.LabelEncoder(cols=trainDF[cat_feat])
 #print(ce_bin)
 #ce_bin.fit_transform(X,Y)
 #print(ce_bin)
-bst.fit(X,Y)
+eval_set = [(X,Y),(X_test, Y_test)]
+bst.fit(X,Y,eval_set=eval_set,verbose=False)
+print(bst)
+
+print('Feature importance', num_feat, bst.feature_importances_)
 
 y_pred = bst.predict(X_test)
 predictions = [round(value) for value in y_pred]
-print(predictions)
+
 accuracy = accuracy_score(Y_test, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
+results = bst.evals_result()
+epochs = len(results["validation_0"]["error"])
+x_axis = range(0, epochs)
 
-#test data
-testDF   = pd.read_csv('test.csv', header=0, index_col=None)
+# plot log loss
+fig, ax = plt.subplots()
+ax.plot(x_axis, results["validation_0"]["logloss"], label="Train")
+ax.plot(x_axis, results["validation_1"]["logloss"], label="Test")
+ax.legend()
+plt.ylabel("Log Loss")
+plt.xlabel("Iteration")
+plt.title("XGBoost Log Loss")
+plt.show()
+
+# plot classification error
+fig, ax = plt.subplots()
+ax.plot(x_axis, results['validation_0']['error'], label='Train')
+ax.plot(x_axis, results['validation_1']['error'], label='Test')
+ax.legend()
+plt.ylabel('Classification Error')
+plt.xlabel("Iteration")
+plt.title('XGBoost Classification Error')
+plt.show()
+
+# plot classification auc
+fig, ax = plt.subplots()
+ax.plot(x_axis, results['validation_0']['auc'], label='Train')
+ax.plot(x_axis, results['validation_1']['auc'], label='Test')
+ax.legend()
+plt.ylabel('AUC')
+plt.xlabel("Iteration")
+plt.title('XGBoost Training Performance')
+plt.show()
+##test data
+#testDF   = pd.read_csv('test.csv', header=0, index_col=None)
