@@ -10,6 +10,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import category_encoders as ce
+import csv
 
 
 def main():
@@ -38,8 +39,6 @@ def main():
     #Encode string input variables
     le = LabelEncoder()
     trainDF[cat_feat] = trainDF[cat_feat].apply(lambda x: le.fit_transform(x))
-    print(trainDF['Cabin'])
-    print(trainDF['Embarked'])
 
     #split labeled sample in train and test
     X, X_test, Y, Y_test = train_test_split(
@@ -69,7 +68,7 @@ def plot_features(trainDF,inp_feat):
         plt.hist(trainDF_nsur[ft], histtype='step', label="not survived")
         ax.legend()
         plt.xlabel(ft)
-        plt.show()
+        plt.savefig('model_figs/'+ft+'.png')
 
 
 #derive secondary features
@@ -113,7 +112,7 @@ def get_perf_plots(bst,X,Y,X_test, Y_test):
     plt.ylabel("Log Loss")
     plt.xlabel("Iteration")
     plt.title("XGBoost Log Loss")
-    plt.show()
+    plt.savefig('model_figs/logloss.png')
 
     # plot classification error
     fig, ax = plt.subplots()
@@ -123,7 +122,7 @@ def get_perf_plots(bst,X,Y,X_test, Y_test):
     plt.ylabel('Classification Error')
     plt.xlabel("Iteration")
     plt.title('XGBoost Classification Error')
-    plt.show()
+    plt.savefig('model_figs/error.png')
 
     # plot classification auc
     fig, ax = plt.subplots()
@@ -133,7 +132,7 @@ def get_perf_plots(bst,X,Y,X_test, Y_test):
     plt.ylabel('AUC')
     plt.xlabel("Iteration")
     plt.title('XGBoost Training Performance')
-    plt.show()
+    plt.savefig('model_figs/auc.png')
 
     # plot ROC curve
     y_pred_proba_train = bst.predict_proba(X)
@@ -151,7 +150,7 @@ def get_perf_plots(bst,X,Y,X_test, Y_test):
     plt.plot(fpr_train, tpr_train, label="train data")
     ax.legend()
     plt.ylabel('ROC Curve')
-    plt.show()
+    plt.savefig('model_figs/roc.png')
     return 0
 
 #survival probabilities
@@ -167,7 +166,7 @@ def get_survival_probabilities_lab(bst, trainDF, inp_feat):
     plt.hist(dead_pred_proba[:,1], histtype='step', label="true dead")
     ax.legend()
     plt.xlabel('Survival Probability')
-    plt.show()
+    plt.savefig('model_figs/labeled_prob.png')
     return 0
 
 ##unlabeled data
@@ -177,6 +176,13 @@ def get_survival_probabilities_unlab(bst, inp_feat, cat_feat,le):
     testDF[cat_feat] = testDF[cat_feat].apply(lambda x: le.fit_transform(x))
 
     y_pred = bst.predict(testDF[inp_feat])
+    with open('results.csv', 'w', newline='') as file:
+        fieldnames = ['PassengerId', 'Survived']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        for psgID, pred in zip(testDF['PassengerId'], y_pred):
+            writer.writerow({'PassengerId': int(psgID),
+                             'Survived': int(pred)})
     predictions = [round(value) for value in y_pred]
     test_proba = bst.predict_proba(testDF[inp_feat])
 
@@ -185,7 +191,7 @@ def get_survival_probabilities_unlab(bst, inp_feat, cat_feat,le):
     plt.hist(test_proba[:,1], histtype='step', label="Unlabeled")
     ax.legend()
     plt.xlabel('Survival Probability')
-    plt.show()
+    plt.savefig('model_figs/unlabeled_prob.png')
     return 0
 
 #main
