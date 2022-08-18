@@ -23,17 +23,19 @@ bst = XGBClassifier()
 bst.set_params(eval_metric=['error', 'logloss','auc'],
                max_depth=2, early_stopping_rounds=10)
 
+#Encode string input variables
 le = LabelEncoder()
 trainDF[cat_feat] = trainDF[cat_feat].apply(lambda x: le.fit_transform(x))
 
+#split labeled sample in train and test
 X, X_test, Y, Y_test = train_test_split(
                                 trainDF[inp_feat],
                                 trainDF['Survived'],
-                                test_size=0.33, random_state=5)
+                                test_size=0.5, random_state=5)
 
 eval_set = [(X,Y),(X_test, Y_test)]
 bst.fit(X,Y,eval_set=eval_set,verbose=False)
-print(bst)
+bst.save_model('traintanic.json')
 
 #features importance
 features_map = {}
@@ -43,12 +45,14 @@ features_map = dict(sorted(features_map.items(), key=lambda item:item[1],
                     reverse=True))
 print('Features importance ', features_map)
 
+#Calculate accuracy
 y_pred = bst.predict(X_test)
 predictions = [round(value) for value in y_pred]
 
 accuracy = accuracy_score(Y_test, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
+#Performance evaluation
 results = bst.evals_result()
 epochs = len(results["validation_0"]["error"])
 x_axis = range(0, epochs)
@@ -101,5 +105,34 @@ ax.legend()
 plt.ylabel('ROC Curve')
 plt.show()
 
+#survival probabilities
+trainDF_alive = trainDF[trainDF['Survived']>0]
+trainDF_dead  = trainDF[trainDF['Survived']<1]
+trainDF_alive[cat_feat] = trainDF_alive[cat_feat].apply(lambda x: le.fit_transform(x))
+trainDF_dead[cat_feat]  = trainDF_dead[cat_feat].apply(lambda x: le.fit_transform(x))
+alive_pred_proba = bst.predict_proba(trainDF_alive[inp_feat])
+dead_pred_proba = bst.predict_proba(trainDF_dead[inp_feat])
+
+fig, ax = plt.subplots()
+plt.title('Training sample')
+plt.hist(alive_pred_proba[:,1], histtype='step', label="true alive")
+plt.hist(dead_pred_proba[:,1], histtype='step', label="true dead")
+ax.legend()
+plt.xlabel('Survival Probability')
+plt.show()
+
 ##test data
-#testDF   = pd.read_csv('test.csv', header=0, index_col=None)
+testDF   = pd.read_csv('test.csv', header=0, index_col=None)
+testDF[cat_feat] = testDF[cat_feat].apply(lambda x: le.fit_transform(x))
+
+y_pred = bst.predict(testDF[inp_feat])
+predictions = [round(value) for value in y_pred]
+test_proba = bst.predict_proba(testDF[inp_feat])
+#print('Predictions on unlabeled sample\n', bst.predict_proba(testDF[inp_feat]))
+
+fig, ax = plt.subplots()
+plt.title('Unlabeled sample')
+plt.hist(test_proba[:,1], histtype='step', label="Unlabeled")
+ax.legend()
+plt.xlabel('Survival Probability')
+plt.show()
