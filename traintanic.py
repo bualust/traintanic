@@ -7,11 +7,7 @@ import sklearn.metrics as sklm
 from sklearn.metrics import auc
 from sklearn.metrics import roc_curve
 from sklearn.metrics import accuracy_score
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import LabelEncoder
-from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 import category_encoders as ce
 
