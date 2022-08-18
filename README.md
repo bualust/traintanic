@@ -7,5 +7,6 @@ The model is trained over 67% of the training data and its accuracy is evaultaed
 
 The AUC is assed to be around 87-90%.
 
-##to run
+#to run
+This simple script requires the following dependencies: xgboost, pandas, matplotlib, sklearn
 > python3 traintanic.py
