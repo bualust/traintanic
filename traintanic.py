@@ -35,7 +35,13 @@ eval_set = [(X,Y),(X_test, Y_test)]
 bst.fit(X,Y,eval_set=eval_set,verbose=False)
 print(bst)
 
-print('Feature importance', num_feat, bst.feature_importances_)
+#features importance
+features_map = {}
+for name,imp in zip(inp_feat, bst.feature_importances_):
+    features_map[name]=float(imp)
+features_map = dict(sorted(features_map.items(), key=lambda item:item[1],
+                    reverse=True))
+print('Features importance ', features_map)
 
 y_pred = bst.predict(X_test)
 predictions = [round(value) for value in y_pred]
@@ -80,7 +86,6 @@ plt.show()
 # plot ROC curve
 y_pred_proba_train = bst.predict_proba(X)
 y_pred_proba_test  = bst.predict_proba(X_test)
-
 
 fpr_train, tpr_train, _ = sklm.roc_curve(Y, y_pred_proba_train[:,1])
 fpr_test, tpr_test, _   = sklm.roc_curve(Y_test, y_pred_proba_test[:,1])
