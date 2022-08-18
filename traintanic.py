@@ -108,8 +108,6 @@ plt.show()
 #survival probabilities
 trainDF_alive = trainDF[trainDF['Survived']>0]
 trainDF_dead  = trainDF[trainDF['Survived']<1]
-trainDF_alive[cat_feat] = trainDF_alive[cat_feat].apply(lambda x: le.fit_transform(x))
-trainDF_dead[cat_feat]  = trainDF_dead[cat_feat].apply(lambda x: le.fit_transform(x))
 alive_pred_proba = bst.predict_proba(trainDF_alive[inp_feat])
 dead_pred_proba = bst.predict_proba(trainDF_dead[inp_feat])
 
@@ -128,7 +126,6 @@ testDF[cat_feat] = testDF[cat_feat].apply(lambda x: le.fit_transform(x))
 y_pred = bst.predict(testDF[inp_feat])
 predictions = [round(value) for value in y_pred]
 test_proba = bst.predict_proba(testDF[inp_feat])
-#print('Predictions on unlabeled sample\n', bst.predict_proba(testDF[inp_feat]))
 
 fig, ax = plt.subplots()
 plt.title('Unlabeled sample')
