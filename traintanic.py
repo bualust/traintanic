@@ -17,34 +17,33 @@ def main():
 
     #training data
     trainDF  = pd.read_csv('train.csv', header=0, index_col=None)
-    trainDF  = add_features(trainDF)
-    num_feat = trainDF.select_dtypes([np.number]).columns
-    num_feat = num_feat.drop('Survived')
-    num_feat = num_feat.drop('PassengerId')
-    cat_feat = trainDF.select_dtypes(exclude=[np.number]).columns
-    cat_feat = cat_feat.drop('Name')
-    cat_feat = cat_feat.drop('Ticket')
-    cat_feat = cat_feat.drop('Cabin')
-    cat_feat = cat_feat.drop('Embarked')
+
+    #list of input features
+    num_feat, cat_feat = get_features(trainDF)
     inp_feat = num_feat.append(cat_feat)
 
-    #plot features bf training
-    plot_features(trainDF,inp_feat)
-
-    # fit model
+    #fit model
     bst = XGBClassifier()
     bst.set_params(eval_metric=['error', 'logloss','auc'],
-                   max_depth=2, early_stopping_rounds=5)
+                   max_depth=2, early_stopping_rounds=10)
 
     #Encode string input variables
     le = LabelEncoder()
     trainDF[cat_feat] = trainDF[cat_feat].apply(lambda x: le.fit_transform(x))
 
+    #adding secondary features
+    trainDF  = add_features(trainDF)
+    num_feat, cat_feat_dum = get_features(trainDF)
+    inp_feat = num_feat
+
+    #plot features bf training
+    plot_features(trainDF,inp_feat)
+
     #split labeled sample in train and test
     X, X_test, Y, Y_test = train_test_split(
                                     trainDF[inp_feat],
                                     trainDF['Survived'],
-                                    test_size=0.33, random_state=5)
+                                    test_size=0.10, random_state=5)
 
     eval_set = [(X,Y),(X_test, Y_test)]
     bst.fit(X,Y,eval_set=eval_set,verbose=False)
@@ -56,12 +55,23 @@ def main():
     get_survival_probabilities_lab(bst, trainDF, inp_feat)
     get_survival_probabilities_unlab(bst, inp_feat, cat_feat,le)
 
+#features list
+def get_features(trainDF):
+
+    #split categorical features from others
+    num_feat = trainDF.select_dtypes([np.number]).columns
+    num_feat = num_feat.drop('Survived')
+    num_feat = num_feat.drop('PassengerId')
+    cat_feat = trainDF.select_dtypes(exclude=[np.number]).columns
+    cat_feat = cat_feat.drop('Name')
+
+    return num_feat, cat_feat
 
 #plot all input features
 def plot_features(trainDF,inp_feat):
+    fig, ax = plt.subplots()
     for ft in inp_feat:
         print('Plotting feature ', ft)
-        fig, ax = plt.subplots()
         trainDF_surv = trainDF[trainDF['Survived']>0]
         trainDF_nsur = trainDF[trainDF['Survived']<1]
         plt.hist(trainDF_surv[ft], histtype='step', label="survived")
@@ -69,6 +79,7 @@ def plot_features(trainDF,inp_feat):
         ax.legend()
         plt.xlabel(ft)
         plt.savefig('model_figs/'+ft+'.png')
+        plt.cla()
 
 
 #derive secondary features
@@ -77,6 +88,12 @@ def add_features(trainDF):
     trainDF['ParchClass']=trainDF['Parch']/trainDF['Pclass']
     trainDF['ParchSib']=(trainDF['Parch']-trainDF['SibSp'])/(trainDF['Parch']+trainDF['SibSp'])
     trainDF['AgeClass']=(trainDF['Age']-trainDF['Pclass'])/(trainDF['Age']+trainDF['Pclass'])
+    trainDF['CabinClass']=(trainDF['Cabin']-trainDF['Pclass'])/(trainDF['Cabin']+trainDF['Pclass'])
+    trainDF['CabinAge']=(trainDF['Cabin']-trainDF['Age'])/(trainDF['Cabin']+trainDF['Age'])
+    trainDF['CabinSex']=(trainDF['Cabin']-trainDF['Sex'])/(trainDF['Cabin']+trainDF['Sex'])
+    trainDF['Age_over_class']=trainDF['Age']/trainDF['Pclass']
+    trainDF['Cabin_over_class']=trainDF['Cabin']/trainDF['Pclass']
+    trainDF['ciao']=(trainDF['Cabin']/trainDF['Pclass']+trainDF['Age']/trainDF['Pclass'])
     return trainDF
 
 #features importance ranking
@@ -171,9 +188,10 @@ def get_survival_probabilities_lab(bst, trainDF, inp_feat):
 
 ##unlabeled data
 def get_survival_probabilities_unlab(bst, inp_feat, cat_feat,le):
+
     testDF   = pd.read_csv('test.csv', header=0, index_col=None)
-    testDF   = add_features(testDF)
     testDF[cat_feat] = testDF[cat_feat].apply(lambda x: le.fit_transform(x))
+    testDF   = add_features(testDF)
 
     y_pred = bst.predict(testDF[inp_feat])
     with open('results.csv', 'w', newline='') as file:
