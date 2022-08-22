@@ -11,6 +11,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import category_encoders as ce
 import csv
+import math
 
 
 def main():
@@ -31,10 +32,14 @@ def main():
     le = LabelEncoder()
     trainDF[cat_feat] = trainDF[cat_feat].apply(lambda x: le.fit_transform(x))
 
+    #fix vars with nan values
+    trainDF = fixNaN(trainDF, inp_feat)
+
     #adding secondary features
     trainDF  = add_features(trainDF)
     num_feat, cat_feat_dum = get_features(trainDF)
     inp_feat = num_feat
+
 
     #plot features bf training
     plot_features(trainDF,inp_feat)
@@ -54,6 +59,20 @@ def main():
     get_perf_plots(bst,X,Y,X_test, Y_test)
     get_survival_probabilities_lab(bst, trainDF, inp_feat)
     get_survival_probabilities_unlab(bst, inp_feat, cat_feat,le)
+
+
+#fix variables with NaN values
+def fixNaN(trainDF, num_feat):
+
+    for feat_name in num_feat:
+        new_values = []
+        for values in trainDF[feat_name]:
+            if math.isnan(values) :
+                new_values.append(-99)
+            else: new_values.append(values)
+        trainDF[feat_name] = new_values
+
+    return trainDF
 
 #features list
 def get_features(trainDF):
